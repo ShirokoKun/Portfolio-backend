@@ -1,6 +1,23 @@
 {
+  "name": "shirokokun-portfolio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix portfolio-website",
+    "dev:backend": "npm run dev --prefix portfolio-backend",
+    "dev:all": "concurrently \"npm run dev:backend\" \"npm run dev\"",
+    "build": "npm run build --prefix portfolio-backend && npm run build --prefix portfolio-website",
+    "build:backend": "npm run build --prefix portfolio-backend",
+    "build:frontend": "npm run build --prefix portfolio-website",
+    "start": "npm run start --prefix portfolio-backend",
+    "start:frontend": "npm run start --prefix portfolio-website",
+    "install:all": "npm install && npm install --prefix portfolio-backend && npm install --prefix portfolio-website"
+  },
   "dependencies": {
     "framer-motion": "^12.23.12",
     "react-intersection-observer": "^9.16.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
   }
 }
