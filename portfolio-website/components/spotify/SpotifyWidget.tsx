@@ -1,47 +1,27 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Music2 } from 'lucide-react';
 import NowPlaying from './NowPlaying';
 import LastPlayed from './LastPlayed';
+import { useSpotify } from '@/hooks/useSpotify';
 
 interface SpotifyWidgetProps {
   className?: string;
 }
 
-// Mock data for now - will be replaced with real API data
-const mockCurrentTrack = {
-  songName: 'Blinding Lights',
-  artistName: 'The Weeknd',
-  albumArt: '/images/placeholder-album.svg',
-  progress: 65,
-  duration: '3:20',
-  currentTime: '2:10',
-};
-
-const mockLastPlayed = {
-  songName: 'Bohemian Rhapsody',
-  artistName: 'Queen',
-  albumArt: '/images/placeholder-album.svg',
-  playedAt: '3 hours ago',
-  spotifyUrl: 'https://open.spotify.com/track/example',
+// Helper function to format time
+const formatTime = (ms?: number): string => {
+  if (!ms) return '0:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 };
 
 export default function SpotifyWidget({ className = '' }: SpotifyWidgetProps) {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Simulate loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-      // Randomly set playing state for demo
-      setIsPlaying(Math.random() > 0.5);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  // Fetch Spotify data with 30-second refresh
+  const { track, isLoading, error } = useSpotify(30000);
 
   return (
     <motion.div
@@ -54,8 +34,8 @@ export default function SpotifyWidget({ className = '' }: SpotifyWidgetProps) {
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Music2 className={`w-6 h-6 transition-colors ${isPlaying ? 'text-white group-hover:text-green-500' : 'text-white/50 group-hover:text-white'}`} />
-            {isPlaying && (
+            <Music2 className={`w-6 h-6 transition-colors ${track?.isPlaying ? 'text-white group-hover:text-green-500' : 'text-white/50 group-hover:text-white'}`} />
+            {track?.isPlaying && (
               <motion.div
                 className="absolute -inset-1 bg-white/10 group-hover:bg-green-500/20 rounded-full transition-colors"
                 animate={{
@@ -71,10 +51,10 @@ export default function SpotifyWidget({ className = '' }: SpotifyWidgetProps) {
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">
-              {isPlaying ? '🎵 Now Playing' : '🎧 Spotify'}
+              {track?.isPlaying ? '🎵 Now Playing' : '🎧 Spotify'}
             </h2>
             <p className="text-xs text-zinc-500">
-              {isPlaying ? 'Live from Spotify' : 'Recently played'}
+              {track?.isPlaying ? 'Live from Spotify' : isLoading ? 'Loading...' : 'Not playing'}
             </p>
           </div>
         </div>
@@ -99,7 +79,19 @@ export default function SpotifyWidget({ className = '' }: SpotifyWidgetProps) {
           >
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-green-500" />
           </motion.div>
-        ) : isPlaying ? (
+        ) : error ? (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="py-8 text-center"
+          >
+            <p className="text-red-400 text-sm mb-2">Failed to load Spotify data</p>
+            <p className="text-zinc-600 text-xs">{error}</p>
+          </motion.div>
+        ) : track?.isPlaying ? (
           <motion.div
             key="playing"
             initial={{ opacity: 0, y: 10 }}
@@ -107,17 +99,26 @@ export default function SpotifyWidget({ className = '' }: SpotifyWidgetProps) {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <NowPlaying {...mockCurrentTrack} />
+            <NowPlaying
+              songName={track.title || 'Unknown Track'}
+              artistName={track.artist || 'Unknown Artist'}
+              albumArt={track.albumImageUrl || '/images/placeholder-album.svg'}
+              progress={track.progress && track.duration ? Math.round((track.progress / track.duration) * 100) : 0}
+              duration={formatTime(track.duration)}
+              currentTime={formatTime(track.progress)}
+            />
           </motion.div>
         ) : (
           <motion.div
-            key="last-played"
+            key="not-playing"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
+            className="py-8 text-center"
           >
-            <LastPlayed {...mockLastPlayed} />
+            <p className="text-zinc-400 text-sm">Not currently playing</p>
+            <p className="text-zinc-600 text-xs mt-1">Check back soon! 🎵</p>
           </motion.div>
         )}
       </AnimatePresence>
