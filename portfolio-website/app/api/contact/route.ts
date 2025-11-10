@@ -46,12 +46,19 @@ const sendEmailNotification = async (data: {
   const emailUser = process.env.EMAIL_USER;
   const emailPass = process.env.EMAIL_APP_PASSWORD;
 
+  console.log('📧 Email config check:', {
+    emailUser: emailUser ? '✅ Set' : '❌ Missing',
+    emailPass: emailPass ? '✅ Set' : '❌ Missing',
+  });
+
   if (!emailUser || !emailPass) {
     console.warn('⚠️  Email not configured, skipping notification');
+    console.warn('Available env vars:', Object.keys(process.env).filter(k => k.includes('EMAIL')));
     return false;
   }
 
   try {
+    console.log('🔧 Creating email transporter...');
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -59,8 +66,13 @@ const sendEmailNotification = async (data: {
         pass: emailPass,
       },
     });
+    
+    console.log('✅ Transporter created, verifying connection...');
+    await transporter.verify();
+    console.log('✅ Email connection verified');
 
-    await transporter.sendMail({
+    console.log('📤 Sending email...');
+    const info = await transporter.sendMail({
       from: emailUser,
       to: emailUser,
       subject: `🔔 New Portfolio Contact: ${data.name}`,
@@ -218,10 +230,17 @@ View all submissions: https://docs.google.com/spreadsheets/d/${process.env.GOOGL
       `.trim(),
     });
 
-    console.log('✅ Email notification sent');
+    console.log('✅ Email notification sent successfully! MessageId:', info.messageId);
     return true;
   } catch (error) {
     console.error('❌ Failed to send email:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack,
+      });
+    }
     return false;
   }
 };
@@ -260,17 +279,27 @@ export async function POST(request: Request) {
       },
     });
 
-    // Send email notification (non-blocking)
-    sendEmailNotification({
-      name,
-      email,
-      subject,
-      message,
-      timestamp,
-    }).catch(err => {
-      console.error('Email notification failed:', err);
+    console.log('📧 Attempting to send email notification...');
+    
+    // Send email notification (await to ensure it completes)
+    try {
+      const emailSent = await sendEmailNotification({
+        name,
+        email,
+        subject,
+        message,
+        timestamp,
+      });
+      
+      if (emailSent) {
+        console.log('✅ Email sent successfully');
+      } else {
+        console.warn('⚠️ Email was not sent (credentials missing)');
+      }
+    } catch (err) {
+      console.error('❌ Email notification error:', err);
       // Don't fail the request if email fails
-    });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
