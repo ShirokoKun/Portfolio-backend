@@ -20,7 +20,7 @@ interface UseSpotifyReturn {
   refetch: () => void;
 }
 
-export function useSpotify(refreshInterval = 30000): UseSpotifyReturn {
+export function useSpotify(refreshInterval = 10000): UseSpotifyReturn {
   const [track, setTrack] = useState<SpotifyTrack | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

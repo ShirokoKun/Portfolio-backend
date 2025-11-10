@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Force dynamic rendering - no static generation or caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const SPOTIFY_REFRESH_TOKEN = process.env.SPOTIFY_REFRESH_TOKEN;
@@ -68,6 +72,8 @@ export async function GET() {
     const duration = song.item.duration_ms;
     const progress = song.progress_ms;
 
+    console.log(`✅ Now playing: "${title}" by ${artist} (${Math.floor(progress / 1000)}s / ${Math.floor(duration / 1000)}s)`);
+
     return NextResponse.json(
       {
         isPlaying,
@@ -78,11 +84,14 @@ export async function GET() {
         songUrl,
         duration,
         progress,
+        timestamp: Date.now(), // Add timestamp to prevent caching
       },
       {
         status: 200,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store',
           'Pragma': 'no-cache',
           'Expires': '0',
         },
